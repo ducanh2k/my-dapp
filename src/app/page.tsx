@@ -1,16 +1,16 @@
 "use client";
 import React, { useState } from "react";
 import { ethers } from "ethers";
-import { Button } from "antd";
+import { Button, message } from "antd";
 
 const tokenAddress = "0x7A33e105B4C3f8Fd7275AA70C6eeB3B98b88789A";
 const vaultAddress = "0x4978605A46C2f89CFa44643639684d81A11f8dc8";
-
+const NFTAddress = "0xa6e5FA81500ffb975B32f2dF7d271b634CC4d135";
+const MetaMaskAddress = "0xCA915780d6d9b48bC2803E4a7AB983779e65F128";
 const tokenAbi = [
   "function approve(address spender, uint256 amount) external returns (bool)",
   "function mintToken(address _to,uint256 _amount) public",
   "function balanceOf(address account) external view returns (uint256)",
-  "function transferFrom(address sender, address recipient, uint256 amount) external returns (bool)",
 ];
 
 const vaultAbi = [
@@ -18,11 +18,17 @@ const vaultAbi = [
   "function deposits(address account) external view returns (uint256)",
 ];
 
+const NFTAbi = [
+  "function tokenCounter() external view returns (uint256)",
+  "function balanceOf(address account) external view returns (uint256)",
+];
+
 const Home: React.FC = () => {
   const [account, setAccount] = useState<string | null>(null);
   const [provider, setProvider] = useState<ethers.BrowserProvider | null>(null);
   const [tokenBalance, setTokenBalance] = useState<string>("0");
   const [depositedBalance, setDepositedBalance] = useState<string>("0");
+  const [tokenCounter, setTokenCounter] = useState<string>("0");
 
   const connectMetaMask = async () => {
     if (typeof window !== "undefined" && window.ethereum) {
@@ -34,11 +40,14 @@ const Home: React.FC = () => {
         setProvider(newProvider);
         setAccount(accountAddress);
         fetchBalances(newProvider, accountAddress);
+        getNFTCounter(newProvider);
       } catch (error) {
         console.error("User rejected the request.", error);
+        message.error("User rejected the request.");
       }
     } else {
       console.log("MetaMask is not installed");
+      message.error("MetaMask is not installed");
     }
   };
 
@@ -65,6 +74,7 @@ const Home: React.FC = () => {
       setDepositedBalance(ethers.formatUnits(depositedBalance, 18));
     } catch (error) {
       console.error("Failed to fetch balances", error);
+      message.error("Failed to fetch balances");
     }
   };
 
@@ -80,8 +90,10 @@ const Home: React.FC = () => {
       );
       await tx.wait();
       fetchBalances(provider, account);
+      message.success("Minted 10000 tokens successfully!");
     } catch (error) {
       console.error("Minting tokens failed", error);
+      message.error("Minting tokens failed");
     }
   };
 
@@ -95,7 +107,7 @@ const Home: React.FC = () => {
 
       const approveTx = await tokenContract.approve(
         vaultAddress,
-        ethers.parseUnits("10000", 18),
+        ethers.parseUnits("10000", 18)
       );
       await approveTx.wait();
 
@@ -103,8 +115,22 @@ const Home: React.FC = () => {
       await tx.wait();
 
       fetchBalances(provider, account);
+      message.success("Deposited 10000 tokens successfully!");
     } catch (error) {
       console.error("Depositing tokens failed", error);
+      message.error("Depositing tokens failed");
+    }
+  };
+
+  const getNFTCounter = async (provider: ethers.BrowserProvider) => {
+    try {
+      const NFTContract = new ethers.Contract(NFTAddress, NFTAbi, provider);
+      // const count = await NFTContract.balanceOf(MetaMaskAddress);
+      const count = await NFTContract.tokenCounter();
+      setTokenCounter(count.toString());
+    } catch (error) {
+      console.log("Failed to fetch NFT Counter:", error);
+      message.error("Failed to fetch NFT Counter");
     }
   };
 
@@ -130,6 +156,7 @@ const Home: React.FC = () => {
           >
             Deposit 10000 Tokens
           </Button>
+          <p>TokenERC721 Counter: {tokenCounter}</p>
         </div>
       ) : (
         <Button type="primary" onClick={connectMetaMask}>
